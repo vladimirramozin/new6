@@ -1,0 +1,31 @@
+{% load static %}
+{% load thumbnail %}
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    {% include 'includes/head.html' %}
+  </head>
+  <body>
+    <header>
+        {% include 'includes/header.html' %}
+    </header>
+      <title>
+        {% block title %}
+          Контент не подвезли :(
+        {% endblock %} 
+      </title>
+    <main>
+      <h1>
+        {% block header %}
+
+        {% endblock %} 
+      </h1>
+      {% block content %}
+        Контент не подвезли :(
+      {% endblock %}  
+    </main>     
+    <footer class="border-top text-center py-3">
+      {% include 'includes/footer.html' %}   
+    </footer>
+  </body>
+</html>
