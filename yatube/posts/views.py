@@ -70,6 +70,8 @@ def profile(request, username):
         follow = Follow.objects.filter(user=request.user, author=author)
         if follow:
             following = True
+        else:
+            following = False
     else:
         following = False
     author_posts = Post.objects.filter(author=author)

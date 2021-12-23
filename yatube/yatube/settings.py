@@ -17,8 +17,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'users.apps.UsersConfig',
     'core.apps.CoreConfig',
-    'bootstrap4',
     'sorl.thumbnail',
+    #'bootstrap3',
 ]
 
 MIDDLEWARE = [
