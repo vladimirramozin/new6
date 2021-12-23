@@ -17,7 +17,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'users.apps.UsersConfig',
     'core.apps.CoreConfig',
-    'bootstrap3',
+    'bootstrap4',
     'sorl.thumbnail',
 ]
 
