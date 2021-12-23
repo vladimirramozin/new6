@@ -18,7 +18,6 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'core.apps.CoreConfig',
     'sorl.thumbnail',
-    #'bootstrap3',
 ]
 
 MIDDLEWARE = [
