@@ -219,8 +219,8 @@ class FollowPagesTest(TestCase):
         author = User.objects.get(username='Test2')
         Follow.objects.filter(user=self.user, author=author).delete()
         response = self.authorized_client.get(reverse('posts:follow_index'))
-        posts = response.context['page_obj']
-        self.assertEqual(posts, None)
+        posts = response.context['page_obj'].object_list
+        self.assertFalse(posts)
 
     def test_user_subscriptions_delete(self):
         """Авторизованный пользователь может отписаться"""
