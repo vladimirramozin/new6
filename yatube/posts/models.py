@@ -1,6 +1,6 @@
-from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import models
 
 User = get_user_model()
 
@@ -81,5 +81,6 @@ class Follow(models.Model):
                                null=True,
                                on_delete=models.CASCADE,
                                related_name='following')
+
     class Meta:
         verbose_name_plural = 'Подписки'
