@@ -10,7 +10,7 @@
       {% for post in page_obj %}
           {% include 'includes/common_in_post.html' %} 
           {% if post.group.slug %}
-            <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы {{ group.title }}</a>
+            <a href="{% url 'posts:group_list' post.group.slug %}">все посты группы {{ group.title }}</a>
           {% endif %}
           {% if user.get_username == post.author.username %}
             <a href="{% url 'posts:post_edit' post.id%}">изменение поста пользователя </a>            

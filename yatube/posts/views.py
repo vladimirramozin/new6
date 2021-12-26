@@ -1,12 +1,12 @@
-from django.shortcuts import redirect, render, get_object_or_404
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.conf import settings
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
 
-from .forms import PostForm, CommentForm
-from .models import Post, Group, Comment, Follow
-from django.contrib.auth import get_user_model
+from .forms import CommentForm, PostForm
+from .models import Comment, Follow, Group, Post
 
 User = get_user_model()
 
@@ -52,10 +52,10 @@ def group_posts(request, slug):
     return render(request, 'posts/group_list.html', context)
 
 
-@cache_page(2)
+@cache_page(20)
 def index(request):
-    post_list = Post.objects.all()
-    paginator = Paginator(post_list, settings.VAR_LIMITER)
+    posts = Post.objects.select_related('author', 'group').all()
+    paginator = Paginator(posts, settings.VAR_LIMITER)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     context = {
@@ -66,14 +66,11 @@ def index(request):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    if not request.user.is_anonymous:
-        follow = Follow.objects.filter(user=request.user, author=author)
-        if follow:
-            following = True
-        else:
-            following = False
+    if not request.user.is_anonymous and Follow.objects.filter(user=request.user, author=author):
+        following = True
     else:
         following = False
+    request_user = request.user
     author_posts = Post.objects.filter(author=author)
     author_posts_count = author_posts.count()
     paginator = Paginator(author_posts, settings.VAR_LIMITER)
@@ -81,6 +78,7 @@ def profile(request, username):
     page_obj = paginator.get_page(page_number)
     context = {
         'author': author,
+        'request_user': request_user,
         'author_posts_count': author_posts_count,
         'page_obj': page_obj,
         'following': following,
@@ -97,7 +95,6 @@ def post_detail(request, post_id):
     author_posts_count = author_posts.count()
     context = {
         'post': post,
-        'author_posts': author_posts,
         'author_posts_count': author_posts_count,
         'form': form,
         'comments': comments
@@ -118,20 +115,20 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    user_subscriptions = Follow.objects.filter(user=request.user)
-    if user_subscriptions is not None:
-        authors = list()
-        for user in user_subscriptions:
-            authors.append(user.author)
-        post = Post.objects.filter(author__in=authors)
-        paginator = Paginator(post, settings.VAR_LIMITER)
+    posts = Post.objects.filter(author__following__user=request.user)
+    if posts:
+        paginator = Paginator(posts, settings.VAR_LIMITER)
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
         context = {
             'page_obj': page_obj
         }
-        return render(request, 'posts/follow.html', context)
-    return render(request, 'posts:follow_index')
+
+    else:
+        context = {
+            'page_obj': None
+        }
+    return render(request, 'posts/follow.html', context)
 
 
 @login_required
@@ -147,5 +144,7 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     post_author = get_object_or_404(User, username=username)
-    Follow.objects.filter(user=request.user, author=post_author).delete()
+    follow=Follow.objects.filter(user=request.user, author=post_author)
+    if follow:
+        follow.delete()
     return redirect('posts:profile', username=username)

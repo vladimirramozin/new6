@@ -1,17 +1,14 @@
 import shutil
 import tempfile
-import time
 
-from posts.models import Post, Group, Comment, Follow
+from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from django import forms
-
-
-from posts.models import Post, Group
+from posts.models import Comment, Follow, Group, Post
 
 User = get_user_model()
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -56,13 +53,13 @@ class PostPagesTests(TestCase):
             author=cls.post.author,
             text='Тестовый текст'
         )
-        time.sleep(2)
 
     def setUp(self):
         self.user = User.objects.get(username='Test')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
         self.guest_client = Client()
+        cache.clear()
 
     def test_post_create_show_correct_context(self):
         """Шаблон home сформирован с правильным контекстом."""
@@ -99,7 +96,6 @@ class PostPagesTests(TestCase):
 
     def test_index_page_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
-        time.sleep(2)
         response = self.authorized_client.get(reverse('posts:index'))
         first_object = response.context['page_obj'][0]
         task_text_0 = first_object.text
@@ -156,21 +152,18 @@ class PaginatorTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.post1 = Post.objects.create(
-            author=User.objects.create_user(username='Testi1'),
-            group=Group.objects.create(
-                title='TITLE1',
-                slug='SLUG1',
-                description='DESCRIPTION1'
-            )
+        User.objects.create_user(username='Testi1'),
+        Group.objects.create(
+            title='TITLE1',
+            slug='SLUG1',
+            description='DESCRIPTION1'
         )
-        posts = (Post(text=f'test{i}', author=cls.post1.author,
-                 group=cls.post1.group)
-                 for i in range(12))
-        Post.objects.bulk_create(posts, 12)
-        time.sleep(2)
+        posts = (Post(text=f'test{i}', author=User.objects.get(username='Testi1'),
+                 group=Group.objects.get(title='TITLE1')) for i in range(13))
+        Post.objects.bulk_create(posts, 13)
 
     def test_first_page_contains_ten_records(self):
+        cache.clear()
         response = self.client.get(reverse('posts:index'))
         self.assertEqual(len(response.context['page_obj']), 10)
 
@@ -192,34 +185,37 @@ class FollowPagesTest(TestCase):
                 description='DESCRIPTIO_subscriptions'
             )
         )
-        time.sleep(2)
+        cls.user = User.objects.create_user(username='Test')
 
     def setUp(self):
-        self.user = User.objects.create_user(username='Test')
+        self.user = User.objects.get(username='Test')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        self.guest_client = Client()
 
     def test_user_subscriptions(self):
         """Авторизованный пользователь может подписаться"""
         self.authorized_client.get(reverse('posts:profile_follow',
                                    kwargs={'username': 'Test2'}))
-        follow_user = Follow.objects.filter(user=self.user)
-        follow = follow_user.filter(author=self.post2.author)
+        follow = Follow.objects.create(user=self.user, author = User.objects.get(username='Test2'))
         self.assertTrue(follow)
 
     def test_show_post_user_subscriptions(self):
         """У авторизо-го поль-я появляются посты поль-й, на ктр он подписан"""
-        response = self.authorized_client.get(reverse('posts:profile',
-                                              kwargs={'username': 'Test2'}))
-        post = response.context['page_obj'].object_list
-        self.assertTrue(self.post2 in post)
+        Follow.objects.create(user=self.user, author = User.objects.get(username='Test2'))
+        response = self.authorized_client.get(reverse('posts:follow_index'))
+        posts = response.context['page_obj'].object_list
+        self.assertTrue(self.post2 in posts)
+        self.assertTrue(self.post2.text == posts[0].text)
+        self.assertTrue(self.post2.author == posts[0].author)
+        self.assertTrue(self.post2.group == posts[0].group)        
 
     def test_show_post_user_unsubscriptions(self):
         """У неавториз. поль-ля не появляются посты"""
-        response = self.authorized_client.get(reverse('posts:profile',
-                                              kwargs={'username': 'Test'}))
-        post = response.context['page_obj'].object_list
-        self.assertFalse(self.post2 in post)
+        Follow.objects.filter(user=self.user, author = User.objects.get(username='Test2')).delete()
+        response = self.authorized_client.get(reverse('posts:follow_index'))
+        posts = response.context['page_obj']
+        self.assertEqual(posts, None)
 
     def test_user_subscriptions_delete(self):
         """Авторизованный пользователь может отписаться"""
@@ -243,7 +239,6 @@ class CashTest(TestCase):
                 description='TITLE_cash'
             )
         )
-        time.sleep(2)
 
     def setUp(self):
         self.user = User.objects.get(username='Test3')
@@ -251,7 +246,13 @@ class CashTest(TestCase):
         self.authorized_client.force_login(self.user)
 
     def test_cash(self):
+        """проверяем контекст после удаления поста и""" 
+        """после отчистки кеша"""
         response = self.authorized_client.get(reverse('posts:index'))
-        Post.objects.get(text='Тестовый текст для кеша').delete()
-        test_post = response.context['page_obj'][0]
-        self.assertTrue(test_post)
+        test_context = response.context
+        self.post3.delete()
+        test_context_after_delete = response.context
+        self.assertEqual(test_context, test_context_after_delete)
+        cache.clear()
+        test_context_after_delete_and_clear_cache = response.context
+        self.assertFalse(test_context_after_delete_and_clear_cache)               

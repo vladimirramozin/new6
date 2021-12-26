@@ -67,6 +67,7 @@ class Comment(models.Model, LoginRequiredMixin):
 
     class Meta:
         ordering = ('created',)
+        verbose_name_plural = 'Коментарии'
 
 
 class Follow(models.Model):
@@ -80,3 +81,5 @@ class Follow(models.Model):
                                null=True,
                                on_delete=models.CASCADE,
                                related_name='following')
+    class Meta:
+        verbose_name_plural = 'Подписки'

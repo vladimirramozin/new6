@@ -2,7 +2,7 @@ import time
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
-
+from django.core.cache import cache
 from posts.models import Post, Group
 
 User = get_user_model()
@@ -27,6 +27,7 @@ class PostURLTests(TestCase):
         self.user = User.objects.get(username='Тест')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -38,7 +39,8 @@ class PostURLTests(TestCase):
             'posts/profile.html': reverse('posts:profile',
                                           kwargs={'username': 'Тест'}),
             'posts/post_detail.html': reverse('posts:post_detail',
-                                              args={self.post.id})
+                                              args={self.post.id}),
+            'posts/follow.html': reverse('posts:follow_index'),
         }
 
         for template, reverse_name in templates_pages_names.items():
@@ -48,7 +50,6 @@ class PostURLTests(TestCase):
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
-        time.sleep(2)
         templates_url_names = {
             'posts/index.html': reverse('posts:index'),
             'posts/group_list.html': reverse('posts:group_list',
