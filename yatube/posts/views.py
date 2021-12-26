@@ -29,6 +29,7 @@ def post_edit(request, post_id):
 
 @login_required
 def post_create(request):
+    is_edit = False
     form = PostForm(request.POST or None,
                     files=request.FILES or None)
     if request.method == 'POST' and form.is_valid():
@@ -36,7 +37,8 @@ def post_create(request):
         post.author = request.user
         post.save()
         return redirect('posts:profile', username=post.author)
-    return render(request, 'posts/create_post.html', {'form': form})
+    return render(request, 'posts/create_post.html',
+                  {'form': form, 'is_edit': is_edit})
 
 
 def group_posts(request, slug):
@@ -66,7 +68,7 @@ def index(request):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    if not (request.user.is_anonymous
+    if (not request.user.is_anonymous
             and Follow.objects.filter(user=request.user, author=author)):
         following = True
     else:
@@ -117,18 +119,13 @@ def add_comment(request, post_id):
 @login_required
 def follow_index(request):
     posts = Post.objects.filter(author__following__user=request.user)
-    if posts:
-        paginator = Paginator(posts, settings.VAR_LIMITER)
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
-        context = {
-            'page_obj': page_obj
-        }
+    paginator = Paginator(posts, settings.VAR_LIMITER)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    context = {
+        'page_obj': page_obj
+    }
 
-    else:
-        context = {
-            'page_obj': None
-        }
     return render(request, 'posts/follow.html', context)
 
 
@@ -137,7 +134,7 @@ def profile_follow(request, username):
     post_author = get_object_or_404(User, username=username)
     follow_exists = Follow.objects.filter(user=request.user,
                                           author=post_author).exists()
-    if (request.user != post_author) and not follow_exists:
+    if request.user != post_author and not follow_exists:
         Follow.objects.create(user=request.user, author=post_author)
     return redirect('posts:profile', username=username)
 
