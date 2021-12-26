@@ -158,7 +158,8 @@ class PaginatorTest(TestCase):
             slug='SLUG1',
             description='DESCRIPTION1'
         )
-        posts = (Post(text=f'test{i}', author=User.objects.get(username='Testi1'),
+        posts = (Post(text=f'test{i}',
+                 author=User.objects.get(username='Testi1'),
                  group=Group.objects.get(title='TITLE1')) for i in range(13))
         Post.objects.bulk_create(posts, 13)
 
@@ -195,24 +196,28 @@ class FollowPagesTest(TestCase):
 
     def test_user_subscriptions(self):
         """Авторизованный пользователь может подписаться"""
+        author = User.objects.get(username='Test2')
         self.authorized_client.get(reverse('posts:profile_follow',
                                    kwargs={'username': 'Test2'}))
-        follow = Follow.objects.create(user=self.user, author = User.objects.get(username='Test2'))
+        follow = Follow.objects.create(user=self.user,
+                                       author=author)
         self.assertTrue(follow)
 
     def test_show_post_user_subscriptions(self):
         """У авторизо-го поль-я появляются посты поль-й, на ктр он подписан"""
-        Follow.objects.create(user=self.user, author = User.objects.get(username='Test2'))
+        Follow.objects.create(user=self.user,
+                              author=User.objects.get(username='Test2'))
         response = self.authorized_client.get(reverse('posts:follow_index'))
         posts = response.context['page_obj'].object_list
         self.assertTrue(self.post2 in posts)
         self.assertTrue(self.post2.text == posts[0].text)
         self.assertTrue(self.post2.author == posts[0].author)
-        self.assertTrue(self.post2.group == posts[0].group)        
+        self.assertTrue(self.post2.group == posts[0].group)
 
     def test_show_post_user_unsubscriptions(self):
         """У неавториз. поль-ля не появляются посты"""
-        Follow.objects.filter(user=self.user, author = User.objects.get(username='Test2')).delete()
+        author = User.objects.get(username='Test2')
+        Follow.objects.filter(user=self.user, author=author).delete()
         response = self.authorized_client.get(reverse('posts:follow_index'))
         posts = response.context['page_obj']
         self.assertEqual(posts, None)
@@ -246,7 +251,7 @@ class CashTest(TestCase):
         self.authorized_client.force_login(self.user)
 
     def test_cash(self):
-        """проверяем контекст после удаления поста и""" 
+        """проверяем контекст после удаления поста и"""
         """после отчистки кеша"""
         response = self.authorized_client.get(reverse('posts:index'))
         test_context = response.context
@@ -255,4 +260,4 @@ class CashTest(TestCase):
         self.assertEqual(test_context, test_context_after_delete)
         cache.clear()
         test_context_after_delete_and_clear_cache = response.context
-        self.assertFalse(test_context_after_delete_and_clear_cache)               
+        self.assertFalse(test_context_after_delete_and_clear_cache)

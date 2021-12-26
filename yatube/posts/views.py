@@ -31,7 +31,7 @@ def post_edit(request, post_id):
 def post_create(request):
     form = PostForm(request.POST or None,
                     files=request.FILES or None)
-    if request.method == "POST" and form.is_valid():
+    if request.method == 'POST' and form.is_valid():
         post = form.save(commit=False)
         post.author = request.user
         post.save()
@@ -66,7 +66,8 @@ def index(request):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    if not request.user.is_anonymous and Follow.objects.filter(user=request.user, author=author):
+    if not (request.user.is_anonymous
+            and Follow.objects.filter(user=request.user, author=author)):
         following = True
     else:
         following = False
@@ -144,7 +145,7 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     post_author = get_object_or_404(User, username=username)
-    follow=Follow.objects.filter(user=request.user, author=post_author)
+    follow = Follow.objects.filter(user=request.user, author=post_author)
     if follow:
         follow.delete()
     return redirect('posts:profile', username=username)
