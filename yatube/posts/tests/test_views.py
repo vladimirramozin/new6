@@ -55,9 +55,8 @@ class PostPagesTests(TestCase):
         )
 
     def setUp(self):
-        self.user = User.objects.get(username='Test')
         self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
+        self.authorized_client.force_login(self.post.author)
         self.guest_client = Client()
         cache.clear()
 
@@ -145,22 +144,22 @@ class PostPagesTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse('login') + '?next='
                              + reverse('posts:add_comment',
-                             kwargs={'post_id': 1}))
+                             args={self.post.id}))
 
 
 class PaginatorTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        User.objects.create_user(username='Testi1'),
-        Group.objects.create(
+        author = User.objects.create_user(username='Testi1'),
+        group = Group.objects.create(
             title='TITLE1',
             slug='SLUG1',
             description='DESCRIPTION1'
         )
         posts = (Post(text=f'test{i}',
-                 author=User.objects.get(username='Testi1'),
-                 group=Group.objects.get(title='TITLE1')) for i in range(13))
+                 author=author[0],
+                 group=group) for i in range(13))
         Post.objects.bulk_create(posts, 13)
 
     def test_first_page_contains_ten_records(self):
@@ -189,18 +188,16 @@ class FollowPagesTest(TestCase):
         cls.user = User.objects.create_user(username='Test')
 
     def setUp(self):
-        self.user = User.objects.get(username='Test')
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
         self.guest_client = Client()
 
     def test_user_subscriptions(self):
         """Авторизованный пользователь может подписаться"""
-        author = User.objects.get(username='Test2')
         self.authorized_client.get(reverse('posts:profile_follow',
                                    kwargs={'username': 'Test2'}))
         follow = Follow.objects.create(user=self.user,
-                                       author=author)
+                                       author=self.post2.author)
         self.assertTrue(follow)
 
     def test_show_post_user_subscriptions(self):
@@ -246,18 +243,15 @@ class CashTest(TestCase):
         )
 
     def setUp(self):
-        self.user = User.objects.get(username='Test3')
         self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
+        self.authorized_client.force_login(self.post3.author)
 
-    def test_cash(self):
+    def test_cache(self):
         """проверяем контекст после удаления поста и"""
         """после отчистки кеша"""
         response = self.authorized_client.get(reverse('posts:index'))
-        test_context = response.context
+        test_context_before_delete = response.context
         self.post3.delete()
-        test_context_after_delete = response.context
-        self.assertEqual(test_context, test_context_after_delete)
+        self.assertEqual(test_context_before_delete, response.context)
         cache.clear()
-        test_context_after_delete_and_clear_cache = response.context
-        self.assertFalse(test_context_after_delete_and_clear_cache)
+        self.assertFalse(response.context)
