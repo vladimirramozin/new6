@@ -214,7 +214,7 @@ class FollowPagesTest(TestCase):
     def test_show_post_user_unsubscriptions(self):
         """У неавториз. поль-ля не появляются посты"""
         author = User.objects.get(username='Test2')
-        Follow.objects.filter(user=self.user, author=author).delete()
+        Follow.objects.filter(user=self.user, author=author).all().delete()
         response = self.authorized_client.get(reverse('posts:follow_index'))
         posts = response.context['page_obj'].object_list
         self.assertFalse(posts)
@@ -224,7 +224,7 @@ class FollowPagesTest(TestCase):
         self.authorized_client.get(reverse('posts:profile_unfollow',
                                            kwargs={'username': 'Test2'}))
         follow = Follow.objects.filter(user=self.user).filter(
-            author=self.post2.author)
+            author=self.post2.author).all()
         self.assertFalse(follow)
 
 
